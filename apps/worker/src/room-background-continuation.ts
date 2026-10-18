@@ -1,6 +1,7 @@
 import {
   buildCodexAppServerTurnWorkflowId,
   buildRoomAgentSupervisorWorkflowId,
+  parseTraceparent,
   roomAgentSupervisorQueueItemSchema,
   spaceAgentRoomActionRequestSchema,
   type RoomAgentActionRecord,
@@ -126,6 +127,9 @@ maxMissionTokens: number | null = DEFAULT_ROOM_AGENT_MAX_MISSION_TOKENS): Promis
     ...source.queueItem.turn,
     prompt, roomAgentOperatorRequest: request,
     roomAgentContinuation: { sourceRunId: source.run.runId, generation },
+    // The workflow interceptor creates a fresh root; only the prior span is linked.
+    traceparent: undefined,
+    continuationTraceparent: parseTraceparent(source.queueItem.turn.traceparent) ? source.queueItem.turn.traceparent : undefined,
     artifactIds: [], agentRunId: runId,
     agentUserMessageId: `agent_msg:bg-context-${input.continuationId}`,
     agentAssistantMessageId: `agent_msg:bg-response-${input.continuationId}`,
