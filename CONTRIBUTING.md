@@ -27,6 +27,77 @@ packaging requires its normal toolchain and separate platform acceptance.
 Dependency installation may use the network; the smoke command below does not
 need a provider account, API key, Docker, PostgreSQL or Temporal.
 
+## Run the full app from source
+
+Use Node 22 (>=22.12 <23), npm, and Docker with Compose v2. Install dependencies
+with `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`. Docker pulls PostgreSQL/pgvector
+and Temporal using the installer's digest pins; the first run also needs npm
+registry access for the Dockerfile-pinned OpenCode CLI. Nothing is installed globally.
+
+```sh
+npm run dev:stack                 # up: keep this terminal open
+npm run dev:stack -- status       # from another terminal
+npm run dev:stack -- rebuild      # pick up packages/* changes
+npm run dev:stack -- down         # stop processes and containers, preserve data
+npm run dev:stack -- reset        # remove this stack's containers, volume and state
+npm run dev:stack -- --build      # force internal package builds on startup
+```
+
+Open the printed URL, enter the one-time owner setup token, create the owner,
+and sign in. Open Getting Started and add an OpenCode terminal pane. No provider
+account is required to reach its UI; executing AI tasks may require a model or
+provider account. Dev-login is disabled. The setup token is valid for 15 minutes;
+restart an unclaimed stack if it expires. Existing owner credentials survive down/up.
+
+| Service | Default port | Override |
+| --- | --- | --- |
+| API | 4920 | SPACE_DEV_STACK_API_PORT |
+| Web | 4921 | SPACE_DEV_STACK_WEB_PORT |
+| PostgreSQL | 55432 | SPACE_DEV_STACK_POSTGRES_PORT |
+| Temporal | 57233 | SPACE_DEV_STACK_TEMPORAL_PORT |
+
+All listeners bind to 127.0.0.1. Ports must be distinct, 1024-65535, and cannot
+be 4910 or 4911. The default Compose project is `spaceapp-dev`; set
+`SPACE_DEV_STACK_PROJECT` to a unique name for another checkout. State, private
+secrets, wrappers, provider homes and the CLI binary live in git-ignored
+`.dev-stack/`. Override it with `SPACE_DEV_STACK_DIR` (a dedicated directory
+inside the checkout; ignore that path in your local Git excludes). Use the same
+overrides for every lifecycle command. Never point it at an installed instance.
+
+API edits in `apps/api/src` restart its watch runner. Web edits in
+`apps/web/src` use Vite HMR. After editing `packages/*`, run the rebuild command;
+it rebuilds the internal packages and worker and restarts API, worker and CLI host.
+Open panes may need reopening after a CLI-host restart. Browser/companion services
+and root/admin shell features remain disabled.
+
+On macOS, start Docker Desktop or Colima and select its context with
+`docker context use <context>`; confirm `docker compose version` works.
+On Windows 11 use **WSL2**, clone inside the Linux filesystem (for example
+`~/src/spaceapp`, not `/mnt/c`), and enable Docker Desktop's WSL integration.
+Run Node, npm and these commands inside that distribution. Native Windows is
+rejected because the CLI host requires Unix sockets and PTYs.
+
+Troubleshooting:
+
+- Docker unavailable: start the daemon/Desktop/Colima and check the selected context.
+- Port in use: use the corresponding override above, then down/up with those settings.
+  Vite uses strict port selection and will report the collision.
+- Socket path too long: use a shorter checkout or a shorter `SPACE_DEV_STACK_DIR`.
+- Process exited: the supervisor names the process, stops its peers and exits nonzero.
+  Read its prefixed output; containers remain available for inspection until down.
+- OpenCode install offline: restore npm registry access and retry; a matching installed
+  version is reused. Provider credentials are not required for the terminal UI.
+- Slow readiness: set `SPACE_DEV_STACK_READY_TIMEOUT_MS` (default 240000). A failure
+  names dependencies that are not ready. Use `docker compose -p spaceapp-dev
+  -f .dev-stack/compose.yml logs` for database/Temporal diagnostics.
+- An interrupted supervisor can leave a startup lock. Run down/reset before retrying.
+  After a supervisor crash, cleanup stops the recorded child process groups. It checks
+  the state marker and Docker ownership labels before cleaning up this stack.
+
+The Linux CI driver exercises readiness, owner setup, sign-in, OpenCode pane
+startup and reset without a TTY. Real Linux and macOS/WSL2 terminal evidence is
+still required before claiming cross-platform acceptance.
+
 ## First executed task, without a provider
 
 ```sh
