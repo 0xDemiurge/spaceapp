@@ -49,4 +49,3 @@ export function allowlistSpanAttributes(input: Readonly<Record<string, unknown>>
   }
   return output;
 }
-
