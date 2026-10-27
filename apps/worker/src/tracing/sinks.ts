@@ -18,4 +18,3 @@ export interface WorkflowSpanRecord {
 export interface SpaceTracingSinks extends Sinks {
   spaceTracing: { workflowSpan(record: WorkflowSpanRecord): void };
 }
-
